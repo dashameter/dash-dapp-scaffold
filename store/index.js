@@ -83,6 +83,10 @@ export const actions = {
     console.log('Initializing Dash.Client with mnemonic: ', mnemonic)
 
     let clientOpts = {
+      network: 'testnet',
+      unsafeOptions: {
+        skipSynchronizationBeforeHeight: 485512,
+      },
       passFakeAssetLockProofForTests: process.env.LOCALNODE,
       dapiAddresses: process.env.DAPIADDRESSES,
       wallet: typeof mnemonic !== 'undefined' ? { mnemonic } : undefined,
@@ -117,14 +121,18 @@ export const actions = {
       console.log('init total Balance', client.account.getTotalBalance())
 
       // An account without identity can't submit documents, so let's create one
-      if (!client.account.getIdentityIds().length)
-        await client.platform.identities.register()
+      // if (!client.account.identities.getIdentityIds().length)
+      console.log('Registering identity...')
+
+      const identity = await client.platform.identities.register()
+
+      console.log('identity registered :>> ', identity)
     } else {
       console.log(
         'Initialized client without a wallet, you can fetch documents but not create documents, identities or names !!'
       )
     }
-    const identityId = client.account.getIdentityIds()[0]
+    const identityId = client.account.identities.getIdentityIds()[0]
 
     const userNameDoc = await dispatch('fetchUsernameByOwnerId', identityId)
 
@@ -142,7 +150,7 @@ export const actions = {
     const { platform } = client
 
     try {
-      const identityId = client.account.getIdentityIds()[0]
+      const identityId = client.account.identities.getIdentityIds()[0]
 
       const getStart = Date.now()
 

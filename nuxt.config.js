@@ -8,7 +8,7 @@ export default {
       process.env[`NUXT_EXAMPLE_CONTRACT_ID_${process.env.NUXT_ENV_RUN}`],
     DAPIADDRESSES: process.env.NUXT_DAPIADDRESSES
       ? JSON.parse(process.env.NUXT_DAPIADDRESSES)
-      : undefined,
+      : ['34.220.41.134', '18.236.216.191', '54.191.227.118'],
     DPNS: process.env.NUXT_DPNS_CONTRACT_ID
       ? { contractId: process.env.NUXT_DPNS_CONTRACT_ID }
       : undefined,
