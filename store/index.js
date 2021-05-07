@@ -10,7 +10,7 @@ const getInitState = () => {
     snackbar: { show: false, color: 'red', text: '', timestamp: 0, link: null },
     dppCache: {},
     myUserName: '',
-    dpns: {},
+    dpnsCache: {},
   }
 }
 export const state = () => getInitState()
@@ -23,6 +23,12 @@ export const getters = {
     if (!docId) return null
 
     return state.dppCache[docId]
+  },
+  getUsernameByOwnerId: (state) => (ownerId) => {
+    console.log('getUserNameByOwnerId ownerId :>> ', ownerId)
+    if (!ownerId) return null
+
+    return state.dpnsCache[ownerId] ? state.dpnsCache[ownerId].label : ownerId
   },
 }
 
@@ -43,18 +49,21 @@ export const mutations = {
     console.log('setting cache documents :>> ', documents)
 
     for (let i = 0; i < documents.length; i++) {
-      const document = documents[i].toJSON()
+      const document = documents[i]
 
       console.log('document :>> ', document)
 
       Vue.set(state.dppCache, `${document.$id}`, document)
     }
   },
+  setDpnsCache(state, usernameDoc) {
+    Vue.set(state.dpnsCache, `${usernameDoc.$ownerId}`, usernameDoc)
+  },
 }
 
 export const actions = {
   async fetchUsernameByOwnerId({ commit, state }, ownerId) {
-    if (state.dpns[ownerId]) return
+    if (state.dpnsCache[ownerId]) return
 
     const [usernameDoc] = await client.platform.names.resolveByRecord(
       'dashUniqueIdentityId',
@@ -63,8 +72,10 @@ export const actions = {
 
     console.log('usernameDoc :>> ', ownerId, usernameDoc)
 
-    if (usernameDoc) commit('setDpns', usernameDoc.toJSON())
-    return usernameDoc
+    if (usernameDoc) commit('setDpnsCache', usernameDoc.toJSON())
+
+    return usernameDoc ? usernameDoc.toJSON() : undefined
+    // return undefined
   },
   showSnackbar({ commit }, snackbar) {
     commit('setSnackBar', snackbar)
@@ -75,17 +86,13 @@ export const actions = {
       console.log('client not ready')
       await this.$sleep(250)
     }
-    if (client.wallet)
-      client.account = await client.wallet.getAccount({ index: 0 })
   },
-  async initWallet({ dispatch, commit, state }, { mnemonic }) {
+  initWallet({ dispatch, commit, state }) {
     clientInitFinished = false
-    console.log('Initializing Dash.Client with mnemonic: ', mnemonic)
 
     let clientOpts = {
       passFakeAssetLockProofForTests: process.env.LOCALNODE,
       dapiAddresses: process.env.DAPIADDRESSES,
-      wallet: typeof mnemonic !== 'undefined' ? { mnemonic } : undefined,
       apps: {
         dpns: process.env.DPNS,
         example: {
@@ -101,38 +108,9 @@ export const actions = {
 
     client = new Dash.Client(clientOpts)
 
-    console.log('client.wallet :>> ', client.wallet)
-
     Object.entries(client.getApps().apps).forEach(([name, entry]) =>
       console.log(name, entry.contractId.toString())
     )
-
-    if (client.wallet) {
-      client.account = await client.wallet.getAccount({ index: 0 })
-
-      console.log(
-        'init Funding address',
-        client.account.getUnusedAddress().address
-      )
-      console.log('init total Balance', client.account.getTotalBalance())
-
-      // An account without identity can't submit documents, so let's create one
-      if (!client.account.getIdentityIds().length)
-        await client.platform.identities.register()
-    } else {
-      console.log(
-        'Initialized client without a wallet, you can fetch documents but not create documents, identities or names !!'
-      )
-    }
-    const identityId = client.account.getIdentityIds()[0]
-
-    const userNameDoc = await dispatch('fetchUsernameByOwnerId', identityId)
-
-    const userName = userNameDoc
-      ? userNameDoc.label
-      : '#' + identityId.substr(0, 5)
-
-    commit('setMyUsername', userName)
 
     clientInitFinished = true
   },
@@ -181,6 +159,7 @@ export const actions = {
     }
   },
   async fetchDocumentById({ dispatch, commit }, { typeLocator, docId }) {
+    console.log('docId :>> ', docId)
     const queryOpts = {
       limit: 1,
       startAt: 1,
@@ -198,13 +177,18 @@ export const actions = {
         `${typeLocator}`,
         queryOpts
       )
+
       console.log(
         `fetched DocumentById ${typeLocator}`,
         { queryOpts },
         document
       )
-      commit('setDppCache', { typeLocator, documents: [document] })
-      return document
+      if (document) {
+        commit('setDppCache', { typeLocator, documents: [document.toJSON()] })
+
+        dispatch('fetchUsernameByOwnerId', document.toJSON().$ownerId)
+      }
+      return document ? document.toJSON() : undefined
     } catch (e) {
       console.error(
         'Something went wrong:',
@@ -235,12 +219,22 @@ export const actions = {
     )
 
     try {
-      const documents = await client.platform.documents.get(
-        `${typeLocator}`,
-        queryOpts
-      )
+      const documents = (
+        await client.platform.documents.get(`${typeLocator}`, queryOpts)
+      ).map((doc) => doc.toJSON())
+
       console.log(`fetched Documents ${typeLocator}`, { queryOpts }, documents)
+
       commit('setDppCache', { typeLocator, documents })
+
+      documents.forEach((document) => {
+        console.log(
+          'document ownerId fetchDocuments fetchUsername :>> ',
+          document.$ownerId
+        )
+        dispatch('fetchUsernameByOwnerId', document.$ownerId)
+      })
+
       return documents
     } catch (e) {
       console.error(

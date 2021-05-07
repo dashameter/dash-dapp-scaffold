@@ -22,10 +22,7 @@ export default {
   computed: {},
   async created() {
     try {
-      await this.initWallet({
-        mnemonic:
-          'essay love suffer inquiry buffalo advance glue boil arrive glove clutch oyster', // Supply a mnemonic with funds
-      })
+      await this.initWallet()
     } catch (e) {
       console.error(e)
       this.showSnackbar({ text: e.message })
