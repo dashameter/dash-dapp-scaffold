@@ -11,13 +11,36 @@
         <v-card-title>{{
           accountDPNS ? accountDPNS.label : connectedState
         }}</v-card-title>
+        <v-card-subtitle>Balance: {{ confirmedBalance }}</v-card-subtitle>
+        <v-card-subtitle>Address: {{ unusedAddress }}</v-card-subtitle>
         <v-card-actions>
           <v-btn color="primary" @click="DashConnect">connect wallet</v-btn>
+          <v-btn
+            color="primary"
+            @click="getConfirmedBalance"
+            :disabled="!accountDPNS"
+            >Read Balance</v-btn
+          >
+          <v-btn
+            color="primary"
+            :disabled="!accountDPNS"
+            @click="getUnusedAddress"
+            >Get Address</v-btn
+          >
         </v-card-actions>
       </v-card>
       <v-card class="mb-10">
         <v-card-text class="mb-0 pb-0">Write a message</v-card-text>
         <v-text-field v-model="message" />
+        <v-card-subtitle>
+          <v-icon :color="verified ? 'green' : 'red'">{{
+            verified ? 'mdi-check-bold' : 'mdi-close-thick'
+          }}</v-icon>
+
+          Signature: {{ signature }}
+        </v-card-subtitle>
+        <v-card-subtitle>Encrypted: {{ encrypted }}</v-card-subtitle>
+        <v-card-subtitle>Decrypted: {{ decrypted }}</v-card-subtitle>
         <v-card-actions>
           <v-btn
             :disabled="!accountDPNS"
@@ -25,6 +48,21 @@
             color="secondary"
             @click="sendMessage"
             >Send Message</v-btn
+          >
+          <v-btn :disabled="!accountDPNS" color="secondary" @click="signMessage"
+            >Sign / Verify</v-btn
+          >
+          <v-btn
+            :disabled="!accountDPNS"
+            color="secondary"
+            @click="encryptMessage"
+            >Encrypt
+          </v-btn>
+          <v-btn
+            :disabled="!accountDPNS"
+            color="secondary"
+            @click="decryptMessage"
+            >Decrypt</v-btn
           >
         </v-card-actions>
       </v-card>
@@ -115,12 +153,10 @@
 <script>
 // eslint-disable-next-line no-unused-vars
 import { mapActions, mapGetters } from 'vuex'
-import LocalMessageDuplexStream from 'post-message-stream'
+import DashDappConnect from 'dash-dapp-connect'
+// const DashDappConnect = require('dash-dapp-connect')
 
-const pageStream = new LocalMessageDuplexStream({
-  name: 'DashPay:Dapp',
-  target: 'DashPay:content',
-})
+const Connect = new DashDappConnect()
 
 export default {
   components: {},
@@ -129,7 +165,13 @@ export default {
       connectedState: 'disconnected',
       broadcastState: null,
       message: '',
+      signature: '',
+      verified: false,
+      encrypted: '',
+      decrypted: '',
       accountDPNS: null,
+      confirmedBalance: 0,
+      unusedAddress: '',
       steps: [
         'Connect to Dash Platform',
         'Fetch Documents',
@@ -146,44 +188,7 @@ export default {
   computed: {
     ...mapGetters(['getDocumentById', 'getMyUsername', 'getUsernameByOwnerId']),
   },
-  mounted() {
-    const that = this
-    pageStream.on('data', async (data) => {
-      console.log(data)
-      switch (data.name) {
-        case 'onConnect':
-          if (data.payload) {
-            that.accountDPNS = data.payload
-            that.connectedState = 'connected'
-          }
-          break
-
-        case 'onBroadcastDocument':
-          if (data.payload) {
-            console.log('onBroadcastDocument', data.payload)
-
-            that.docId = data.payload.transitions[0].$id
-
-            that.docs.unshift(
-              await that.fetchDocumentById({
-                typeLocator: 'example.example',
-                docId: that.docId,
-              })
-            )
-            console.log('that.docs :>> ', that.docs)
-            console.log(
-              data.payload.transitions[0],
-              `text ${data.payload.transitions[0]}`
-            )
-            that.broadcastState = 'sent'
-          }
-          break
-
-        default:
-          break
-      }
-    })
-  },
+  mounted() {},
   async created() {
     try {
       // 0 Connect to Dash Platform
@@ -228,23 +233,106 @@ export default {
       'submitDocument',
       'fetchDocuments',
       'fetchDocumentById',
+      'fetchIdentity',
       'showSnackbar',
     ]),
-    sendMessage() {
+    async sendMessage() {
       this.broadcastState = 'sending'
       const typeLocator = `${process.env.example_CONTRACT_ID}.example`
 
       const document = { message: this.message }
 
-      pageStream.write({
-        name: 'broadcastDocument',
-        payload: { typeLocator, document },
-      })
+      const data = await Connect.broadcast({ typeLocator, document })
+
+      console.log('broadcast data :>> ', data)
+
+      this.docId = data.payload.transitions[0].$id
+
+      this.docs.unshift(
+        await this.fetchDocumentById({
+          typeLocator: 'example.example',
+          docId: this.docId,
+        })
+      )
+
+      console.log('this.docs :>> ', this.docs)
+
+      console.log(
+        data.payload.transitions[0],
+        `text ${data.payload.transitions[0]}`
+      )
+
+      this.broadcastState = 'sent'
     },
-    DashConnect() {
+    async DashConnect() {
       this.connectedState = 'connecting'
 
-      pageStream.write({ name: 'connect', payload: null })
+      const data = await Connect.connect()
+
+      console.log('connect data :>> ', data)
+
+      this.accountDPNS = data.payload
+
+      console.log('this.accountDPNS :>> ', this.accountDPNS)
+
+      this.connectedState = 'connected'
+    },
+    async getConfirmedBalance() {
+      const data = await Connect.getConfirmedBalance()
+
+      console.log('balance data :>> ', data)
+
+      this.confirmedBalance = data.payload
+    },
+    async getUnusedAddress() {
+      const data = await Connect.getUnusedAddress()
+
+      console.log('balance data :>> ', data)
+
+      this.unusedAddress = data.payload.address
+    },
+    async signMessage() {
+      let data = await Connect.signMessage({ message: this.message })
+
+      console.log('sign data :>> ', data)
+
+      this.signature = data.payload.signature
+
+      data = await Connect.verifyMessage({
+        message: this.message,
+        signature: data.payload.signature,
+        address: data.payload.address,
+      })
+
+      console.log('verify data :>> ', data)
+      this.verified = data.payload
+      // this.unusedAddress = data.payload.address
+    },
+    async encryptMessage() {
+      const identity = await this.fetchIdentity(this.accountDPNS.$ownerId)
+
+      console.log('identity, accountDPNS :>> ', identity, this.accountDPNS)
+
+      const data = await Connect.encryptForIdentityECIES({
+        message: this.message,
+        identity: identity.toJSON(),
+      })
+
+      console.log('encrypt data :>> ', data)
+
+      this.encrypted = data.payload
+    },
+    async decryptMessage() {
+      const identity = await this.fetchIdentity(this.accountDPNS.$ownerId)
+
+      const data = await Connect.decryptForIdentityECIES({
+        encrypted: this.encrypted,
+        identity: identity.toJSON(),
+      })
+
+      console.log('decrypt data :>> ', data)
+
+      this.decrypted = data.payload
     },
   },
 }

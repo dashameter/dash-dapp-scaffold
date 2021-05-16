@@ -87,6 +87,9 @@ export const actions = {
       await this.$sleep(250)
     }
   },
+  fetchIdentity(ctx, identityId) {
+    return client.platform.identities.get(identityId)
+  },
   initWallet({ dispatch, commit, state }) {
     clientInitFinished = false
 
