@@ -242,7 +242,7 @@ export default {
 
       const document = { message: this.message }
 
-      const data = await Connect.broadcast({ typeLocator, document })
+      const data = await Connect.broadcastDocument({ typeLocator, document })
 
       console.log('broadcast data :>> ', data)
 

@@ -1,7 +1,7 @@
 {
-  "name": "example-cash",
+  "name": "dash-dapp-scaffold",
   "version": "0.0.1",
-  "description": "jumpstart the world",
+  "description": "Rapid Decentralized Dapp Development",
   "author": "dashameter",
   "private": true,
   "scripts": {
