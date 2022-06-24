@@ -164,8 +164,6 @@ export const actions = {
   async fetchDocumentById({ dispatch, commit }, { typeLocator, docId }) {
     console.log('docId :>> ', docId)
     const queryOpts = {
-      limit: 1,
-      startAt: 1,
       where: [['$id', '==', docId]],
     }
 
@@ -195,7 +193,7 @@ export const actions = {
     } catch (e) {
       console.error(
         'Something went wrong:',
-        'fetchDocuments()',
+        'fetchDocumentById()',
         {
           typeLocator,
           queryOpts,

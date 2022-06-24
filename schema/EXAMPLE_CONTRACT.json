@@ -1,22 +1,19 @@
 {
-    "example": {
-        "indices": [
-            {
-                "properties": [
-                    {
-                        "$createdAt": "desc"
-                    }
-                ]
-            }
-        ],
-        "required": [
-            "$createdAt"
-        ],
-        "properties": {
-            "message": {
-                "type": "string"
-            }
-        },
-        "additionalProperties": false
-    }
+  "example": {
+    "type": "object",
+    "indices": [
+      {
+        "name": "createdAt",
+        "properties": [{ "$createdAt": "desc" }],
+        "unique": false
+      }
+    ],
+    "properties": {
+      "message": {
+        "type": "string"
+      }
+    },
+    "required": ["$createdAt"],
+    "additionalProperties": false
+  }
 }

@@ -69,7 +69,7 @@ const initWalletAndIdentity = async () => {
 const registerContract = async (contractDocuments) => {
   const contract = await platform.contracts.create(contractDocuments, identity)
 
-  return platform.contracts.broadcast(contract, identity)
+  return platform.contracts.publish(contract, identity)
 }
 
 ;(async () => {

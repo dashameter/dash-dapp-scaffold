@@ -199,7 +199,11 @@ export default {
       // 1 Fetch Documents
       this.docs = await this.fetchDocuments({
         typeLocator: 'example.example',
-        queryOpts: { limit: 5, orderBy: [['$createdAt', 'desc']] },
+        queryOpts: {
+          limit: 5,
+          where: [['$createdAt', '>', 0]],
+          orderBy: [['$createdAt', 'desc']],
+        },
       })
 
       ++this.currentStep
