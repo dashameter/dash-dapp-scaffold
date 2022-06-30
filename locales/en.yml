@@ -1,0 +1,16 @@
+button:
+  about: About
+  back: Back
+  connect: Connect Wallet
+  send: Send
+  sign_verify: Sign / Verify
+  encrypt: Encrypt
+  decrypt: Decrypt
+  go: GO
+  home: Home
+  toggle_dark: Toggle dark mode
+  toggle_langs: Change languages
+intro:
+  desc: Rapid Decentralized Dapp Development
+  message: Send a message
+not-found: Not found
